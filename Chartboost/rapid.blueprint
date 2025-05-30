@@ -1,0 +1,3 @@
+include "java/com/google/android/libraries/admob/demo/unity/googlemobileads/mediation/release/rapid/adapter_release_blueprint_template.ncl";
+
+blueprint_file = ::Rapid::BlueprintFile("//depot/google3/java/com/google/android/libraries/admob/demo/unity/googlemobileads/mediation/Chartboost/...", "Chartboost", license_review_spreadsheet_template = "1zf9Frj3R5ACQ1G9IQWe4JNUTFmGDux8D3_pypwUpJIo");
