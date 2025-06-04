@@ -1,6 +1,6 @@
 {
   "name": "com.testmono.ads.mobile.mediation.maio",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "displayName": "Maio Mediation for Unity Test",
   "keywords": [
     "Google",
@@ -17,5 +17,12 @@
   "unity": "2019.4",
   "dependencies": {
     "com.google.ads.mobile": "9.0.0"
-  }
+  },
+  "samples": [
+      {
+          "displayName": "Maio Mediation Sample",
+          "description": "Contains sample app to load and show Google ads mediaited through the Maio ad network.",
+          "path": "Samples~/MaioSample"
+      }
+  ]
 }

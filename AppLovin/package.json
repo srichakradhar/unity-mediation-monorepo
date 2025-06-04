@@ -1,6 +1,6 @@
 {
   "name": "com.testmono.ads.mobile.mediation.applovin",
-  "version": "7.4.1",
+  "version": "7.4.2",
   "displayName": "Google Mobile Ads AppLovin Mediation for Unity",
   "keywords": [
     "Google",
@@ -17,5 +17,12 @@
   "unity": "2019.4",
   "dependencies": {
     "com.google.ads.mobile": "9.0.0"
-  }
+  },
+  "samples": [
+      {
+          "displayName": "AppLovin Mediation Sample",
+          "description": "Contains sample app to load and show Google ads mediaited through the AppLovin ad network.",
+          "path": "Samples~/AppLovinSample"
+      }
+  ]
 }

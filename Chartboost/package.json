@@ -1,6 +1,6 @@
 {
   "name": "com.testmono.ads.mobile.mediation.chartboost",
-  "version": "4.6.0",
+  "version": "4.6.1",
   "displayName": "Google Mobile Ads Chartboost Mediation for Unity",
   "keywords": [
     "Google",
@@ -17,5 +17,12 @@
   "unity": "2019.4",
   "dependencies": {
     "com.google.ads.mobile": "9.0.0"
-  }
+  },
+  "samples": [
+      {
+          "displayName": "Chartboost Mediation Sample",
+          "description": "Contains sample app to load and show Google ads mediaited through the Chartboost ad network.",
+          "path": "Samples~/ChartboostSample"
+      }
+  ]
 }

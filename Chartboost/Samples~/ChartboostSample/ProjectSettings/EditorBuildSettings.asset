@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Scenes/GoogleMobileAdsScene.unity
+    guid: 3257d7e8072f74bc197c5ab490913077
+  - enabled: 1
+    path: Assets/Scenes/GoogleBannerViewScene.unity
+    guid: a47a8f330c5aa4a87b7fd70029eac5f3
+  - enabled: 1
+    path: Assets/Scenes/GoogleInterstitialAdScene.unity
+    guid: 3939950dfb06749e896492c006daaf8d
+  - enabled: 1
+    path: Assets/Scenes/GoogleRewardedAdScene.unity
+    guid: cc8dac396c9504ce896f58981b49ea49
+  - enabled: 1
+    path: Assets/Scenes/GoogleRewardedInterstitialAdScene.unity
+    guid: f742630ff22484a999b3d8b24b677d10
+  - enabled: 1
+    path: Assets/Scenes/GoogleAppOpenAdScene.unity
+    guid: f726d519309a94c0f90e02dd7052713b
+  m_configObjects: {}
