@@ -1,0 +1,3 @@
+include 'line'
+include 'app'
+project(':app').projectDir = new File('../../../../../../java/com/google/android/libraries/admob/demo/unity/googlemobileads/source/android-library/app')

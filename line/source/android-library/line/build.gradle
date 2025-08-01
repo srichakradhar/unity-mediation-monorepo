@@ -1,0 +1,42 @@
+apply plugin: 'com.android.library'
+
+android {
+    namespace 'com.google.unity.mediation.line'
+    compileSdkVersion 35
+    defaultConfig {
+        minSdkVersion 23
+        targetSdkVersion 31
+        versionCode 1
+        versionName "1.0"
+        consumerProguardFiles 'proguard-rules.pgcfg'
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pgcfg'
+        }
+    }
+    lintOptions {
+        // Lint disabled because it can't be used with the latest GMA SDK and the gradle plugin used in this library.
+        checkReleaseBuilds false
+        abortOnError false
+    }
+}
+
+dependencies {
+    api project(':app')
+    api 'com.google.ads.mediation:line:2.9.20250519.0'
+}
+
+task clearAar(type: Delete) {
+    delete 'build/libs/line-unity-android-library.aar'
+}
+
+task makeAar(type: Copy) {
+    from('build/outputs/aar/')
+    into('build/libs/')
+    include('line-release.aar')
+    rename('line-release.aar', 'line-unity-android-library.aar')
+}
+
+makeAar.dependsOn(clearAar, build)
