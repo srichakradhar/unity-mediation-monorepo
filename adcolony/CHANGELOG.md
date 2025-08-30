@@ -2,6 +2,7 @@
 
 #### Version 2.6.3 (In Progress)
 - Fixed a duplicate definition warning for `MediationExtras`.
+- Updating changelog to test the Github actions workflow.
 
 #### [Version 2.6.2](https://dl.google.com/googleadmobadssdk/mediation/unity/adcolony/AdColonyUnityAdapter-2.6.2.zip)
 - Moved adapter content to `GoogleMobileAds/Mediation/AdColony/`.
