@@ -32,8 +32,8 @@ jobs:
       - name: Find updated package with changelog
         id: package
         run: |
-          # e.g. PKG_DIR Line/packages/com.google.ads.mobile.mediation.line/CHANGELOG.md -> Line/packages/com.google.ads.mobile.mediation.line
           # PKG_PREFIX Line/packages/com.google.ads.mobile.mediation.line -> Line
+          # PKG_DIR Line/packages/com.google.ads.mobile.mediation.line/CHANGELOG.md -> Line/packages/com.google.ads.mobile.mediation.line
           COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
           if [ -z "$COMMIT_SHA" ]; then
             COMMIT_SHA="${{ github.sha }}"

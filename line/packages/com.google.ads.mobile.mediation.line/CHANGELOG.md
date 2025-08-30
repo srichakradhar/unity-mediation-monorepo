@@ -1,6 +1,6 @@
 ## Line Unity Mediation Plugin Changelog
 
-#### Version 1.0.8 (In progress)
+#### [Version 1.0.8](https://dl.google.com/googleadmobadssdk/mediation/unity/line/LineUnityAdapter-1.0.8.zip)
 
 #### [Version 1.0.0](https://dl.google.com/googleadmobadssdk/mediation/unity/line/LineUnityAdapter-1.0.0.zip)
 - Initial Release.
