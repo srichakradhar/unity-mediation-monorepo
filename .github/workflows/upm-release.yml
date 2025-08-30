@@ -1,4 +1,4 @@
-name: Google Mobile Ads Mediation UPM Package Release
+name: Release GoogleMobileAds Mediation UPM Package
 
 on:
   push:
@@ -21,6 +21,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch history for all branches and tags
 
       - name: Find changed package folder
         id: pkg
@@ -30,8 +32,21 @@ jobs:
             COMMIT_SHA="${{ github.sha }}"
           fi
           echo "[DEBUG] Using commit SHA: $COMMIT_SHA"
+          echo "[DEBUG] Verifying commit exists..."
+          if ! git rev-parse --verify "$COMMIT_SHA^{commit}" >/dev/null 2>&1; then
+            echo "[ERROR] Commit $COMMIT_SHA not found in the repository"
+            exit 1
+          fi
+          
           PKG_DIR=""
+          echo "[DEBUG] Getting list of changed files..."
           CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA")
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "[ERROR] No changed files found in commit $COMMIT_SHA"
+            echo "[DEBUG] Listing git tree for diagnostics:"
+            git log -n 5 --oneline
+            exit 1
+          fi
           echo "[DEBUG] Changed files: $CHANGED_FILES"
           echo "$CHANGED_FILES" | while read FILE; do
             BASENAME=$(basename "$FILE" | tr '[:upper:]' '[:lower:]')
