@@ -39,19 +39,29 @@ jobs:
             COMMIT_SHA="${{ github.sha }}"
           fi
           
-          # Find changed CHANGELOG.md file
-          CHANGELOG_PATH=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -i "changelog\.md$" || true)
+          # Find all changed CHANGELOG.md files
+          CHANGELOG_PATHS=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -i "changelog\.md$" || true)
           
-          if [ -z "$CHANGELOG_PATH" ]; then
+          if [ -z "$CHANGELOG_PATHS" ]; then
             echo "::error::No CHANGELOG.md file was changed in commit $COMMIT_SHA"
             exit 1
           fi
           
-          # Count number of changed CHANGELOG files
-          CHANGELOG_COUNT=$(echo "$CHANGELOG_PATH" | wc -l)
-          if [ "$CHANGELOG_COUNT" -gt 1 ]; then
-            echo "::error::Multiple CHANGELOG.md files were changed. Only one package release is supported per commit."
-            exit 1
+          # Find first CHANGELOG.md that's ready for release (not in progress)
+          CHANGELOG_PATH=""
+          while IFS= read -r path; do
+            # Check if the latest version in this CHANGELOG is marked as "in progress"
+            if ! grep -m1 -A1 "^#### Version" "$path" | grep -qi "in progress"; then
+              CHANGELOG_PATH="$path"
+              break
+            else
+              echo "Skipping $path - version marked as 'in progress'"
+            fi
+          done <<< "$CHANGELOG_PATHS"
+          
+          if [ -z "$CHANGELOG_PATH" ]; then
+            echo "No CHANGELOG.md files ready for release found in commit $COMMIT_SHA"
+            exit 0
           fi
           
           # Find package root (directory containing package.json)
@@ -77,10 +87,10 @@ jobs:
         run: |
           PKG_DIR="${{ steps.package.outputs.pkg_dir }}"
           
-          # Extract version from CHANGELOG.md
-          CHANGELOG_VERSION=$(grep -m1 -Eo '#+\s*\[Version *\[?v?([0-9]+\.[0-9]+\.[0-9]+)\]?' "$PKG_DIR/CHANGELOG.md" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          # Extract version from CHANGELOG.md (only from lines that are not marked as "in progress")
+          CHANGELOG_VERSION=$(grep -B1 -A1 "^####.*Version" "$PKG_DIR/CHANGELOG.md" | grep -v "in progress" | grep -m1 -Eo '[0-9]+\.[0-9]+\.[0-9]+')
           if [ -z "$CHANGELOG_VERSION" ]; then
-            echo "::error::Could not find version in CHANGELOG.md"
+            echo "::error::Could not find a releasable version in CHANGELOG.md"
             exit 1
           fi
           
