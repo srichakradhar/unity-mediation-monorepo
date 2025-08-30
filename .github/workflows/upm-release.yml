@@ -55,7 +55,7 @@ jobs:
               CHANGELOG_PATH="$path"
               break
             else
-              echo "[DEBUG] Skipping $path - version marked as 'in progress'"
+              echo "[DEBUG] Skipping $path - version marked as 'In progress'"
             fi
           done <<< "$CHANGELOG_PATHS"
           
@@ -88,7 +88,6 @@ jobs:
           PKG_DIR="${{ steps.package.outputs.pkg_dir }}"
           
           # Extract first version that's not marked as "in progress"
-          # First, find the first version entry that's a proper release (has a link)
           CHANGELOG_VERSION=$(awk '
             /^#+\s*\[Version ([0-9]+\.[0-9]+\.[0-9]+)\]/ {
               match($0, /([0-9]+\.[0-9]+\.[0-9]+)/, arr)
