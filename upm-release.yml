@@ -1,0 +1,127 @@
+name: Release GoogleMobileAds Mediation UPM Package
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA'
+        required: true
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch history for all branches and tags
+
+      - name: Find changed package folder
+        id: pkg
+        run: |
+          COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+          if [ -z "$COMMIT_SHA" ]; then
+            COMMIT_SHA="${{ github.sha }}"
+          fi
+          echo "[DEBUG] Using commit SHA: $COMMIT_SHA"
+          echo "[DEBUG] Verifying commit exists..."
+          if ! git rev-parse --verify "$COMMIT_SHA^{commit}" >/dev/null 2>&1; then
+            echo "[ERROR] Commit $COMMIT_SHA not found in the repository"
+            exit 1
+          fi
+          
+          PKG_DIR=""
+          echo "[DEBUG] Getting list of changed files..."
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA")
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "[ERROR] No changed files found in commit $COMMIT_SHA"
+            echo "[DEBUG] Listing git tree for diagnostics:"
+            git log -n 5 --oneline
+            exit 1
+          fi
+          echo "[DEBUG] Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Process files without using a pipe to avoid subshell
+          for FILE in $(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA"); do
+            BASENAME=$(basename "$FILE" | tr '[:upper:]' '[:lower:]')
+            echo "[DEBUG] Checking file: $FILE (basename: $BASENAME)"
+            if [[ "$BASENAME" == "changelog.md" ]]; then
+              DIR=$(dirname "$FILE")
+              echo "[DEBUG] Found CHANGELOG.md in $DIR"
+              if [ -f "$DIR/package.json" ]; then
+                echo "[DEBUG] Found package.json in $DIR"
+                PKG_DIR="$DIR"
+                break
+              else
+                echo "[DEBUG] No package.json in $DIR"
+              fi
+            fi
+          done
+          if [ -z "$PKG_DIR" ]; then
+            echo "[ERROR] No valid package directory found!"
+            exit 1
+          fi
+          echo "[DEBUG] Selected package directory: $PKG_DIR"
+          echo "pkg_dir=$PKG_DIR" >> $GITHUB_OUTPUT
+
+      - name: Extract version from CHANGELOG.md
+        id: version
+        run: |
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
+          echo "[DEBUG] Extracting version from $PKG_DIR/CHANGELOG.md..."
+          VERSION=$(grep -m1 -Eo '#*\s*\[Version *\[?v?([0-9]+\.[0-9]+\.[0-9]+)\]?' "$PKG_DIR/CHANGELOG.md" | grep -Eo '([0-9]+\.[0-9]+\.[0-9]+)')
+          echo "[DEBUG] Extracted version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Verify package.json version
+        run: |
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
+          echo "[DEBUG] Verifying package.json version in $PKG_DIR/package.json..."
+          PKG_JSON="$PKG_DIR/package.json"
+          PKG_VERSION=$(jq -r .version "$PKG_JSON")
+          echo "[DEBUG] package.json version: $PKG_VERSION"
+          echo "[DEBUG] CHANGELOG.md version: ${{ steps.version.outputs.version }}"
+          if [ "$PKG_VERSION" != "${{ steps.version.outputs.version }}" ]; then
+            echo "[ERROR] Version mismatch: package.json ($PKG_VERSION) vs CHANGELOG.md (${{ steps.version.outputs.version }})"
+            exit 1
+          fi
+          echo "[DEBUG] Version match confirmed."
+
+      - name: Extract release notes
+        id: notes
+        run: |
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
+          echo "[DEBUG] Extracting release notes from $PKG_DIR/CHANGELOG.md..."
+          NOTES=$(awk '/^#### \[Version /{i++}i==1{print}' "$PKG_DIR/CHANGELOG.md" | tail -n +2)
+          echo "[DEBUG] Extracted release notes:"
+          echo "$NOTES"
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create release tag and GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "[DEBUG] Creating release tag and GitHub release..."
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
+          TAG="${PKG_DIR}/v${{ steps.version.outputs.version }}"
+          echo "[DEBUG] Tag to be created: $TAG"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "[DEBUG] Creating GitHub release with notes:"
+          echo "${{ steps.notes.outputs.notes }}"
+          gh release create "$TAG" --title "$TAG" --notes "${{ steps.notes.outputs.notes }}"
