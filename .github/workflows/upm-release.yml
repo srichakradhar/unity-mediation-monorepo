@@ -43,7 +43,7 @@ jobs:
           CHANGELOG_PATHS=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -i "changelog\.md$" || true)
           
           if [ -z "$CHANGELOG_PATHS" ]; then
-            echo "::error::No CHANGELOG.md file was changed in commit $COMMIT_SHA"
+            echo "[ERROR] ::error::No CHANGELOG.md file was changed in commit $COMMIT_SHA"
             exit 1
           fi
           
@@ -51,16 +51,16 @@ jobs:
           CHANGELOG_PATH=""
           while IFS= read -r path; do
             # Check if the latest version in this CHANGELOG is marked as "in progress"
-            if ! grep -m1 -A1 "^#### Version" "$path" | grep -qi "in progress"; then
+            if ! grep -m1 -A1 "^#+\s*Version" "$path" | grep -qi "in progress"; then
               CHANGELOG_PATH="$path"
               break
             else
-              echo "Skipping $path - version marked as 'in progress'"
+              echo "[DEBUG] Skipping $path - version marked as 'in progress'"
             fi
           done <<< "$CHANGELOG_PATHS"
           
           if [ -z "$CHANGELOG_PATH" ]; then
-            echo "No CHANGELOG.md files ready for release found in commit $COMMIT_SHA"
+            echo "[DEBUG] No CHANGELOG.md files ready for release found in commit $COMMIT_SHA"
             exit 0
           fi
           
@@ -71,7 +71,7 @@ jobs:
           done
           
           if [ ! -f "$PKG_DIR/package.json" ]; then
-            echo "::error::No package.json found in parent directories of $CHANGELOG_PATH"
+            echo "[ERROR] ::error::No package.json found in parent directories of $CHANGELOG_PATH"
             exit 1
           fi
           
@@ -90,28 +90,28 @@ jobs:
           # Extract first version that's not marked as "in progress"
           # First, find the first version entry that's a proper release (has a link)
           CHANGELOG_VERSION=$(awk '
-            /^#### \[Version ([0-9]+\.[0-9]+\.[0-9]+)\]/ {
+            /^#+\s*\[Version ([0-9]+\.[0-9]+\.[0-9]+)\]/ {
               match($0, /([0-9]+\.[0-9]+\.[0-9]+)/, arr)
               print arr[1]
               exit
             }' "$PKG_DIR/CHANGELOG.md")
           
           if [ -z "$CHANGELOG_VERSION" ]; then
-            echo "::error::Could not find a releasable version in CHANGELOG.md"
+            echo "[ERROR] ::error::Could not find a releasable version in CHANGELOG.md"
             exit 1
           fi
           
           # Extract version from package.json
           PKG_VERSION=$(jq -r .version "$PKG_DIR/package.json")
           if [ "$PKG_VERSION" != "$CHANGELOG_VERSION" ]; then
-            echo "::error::Version mismatch: package.json ($PKG_VERSION) vs CHANGELOG.md ($CHANGELOG_VERSION)"
+            echo "[ERROR] ::error::Version mismatch: package.json ($PKG_VERSION) vs CHANGELOG.md ($CHANGELOG_VERSION)"
             exit 1
           fi
           
           # Extract release notes
           NOTES=$(awk '/^#+\s*\[Version /{i++}i==1{print}' "$PKG_DIR/CHANGELOG.md" | tail -n +2)
           if [ -z "$NOTES" ]; then
-            echo "::error::No release notes found in CHANGELOG.md"
+            echo "[ERROR] ::error::No release notes found in CHANGELOG.md"
             exit 1
           fi
           
@@ -132,13 +132,13 @@ jobs:
           TAG="$PKG_PREFIX/v$VERSION"
           
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
-            echo "Creating draft release for $TAG..."
+            echo "[DEBUG] Creating draft release for $TAG..."
             gh release create "$TAG" \
               --draft \
               --title "$TAG" \
               --notes "${{ steps.package_info.outputs.notes }}"
           else
-            echo "Creating release for $TAG..."
+            echo "[DEBUG] Creating release for $TAG..."
             git tag "$TAG"
             git push origin "$TAG"
             gh release create "$TAG" \
