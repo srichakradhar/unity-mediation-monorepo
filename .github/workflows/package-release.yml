@@ -1,0 +1,129 @@
+name: Release Unity Mediation Package
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '**/CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA (leave empty to use latest)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Create draft release (dry run)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Find changed package
+        id: package
+        run: |
+          # Use provided commit SHA or latest commit
+          COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+          if [ -z "$COMMIT_SHA" ]; then
+            COMMIT_SHA="${{ github.sha }}"
+          fi
+          
+          # Find changed CHANGELOG.md file
+          CHANGELOG_PATH=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -i "changelog\.md$" || true)
+          
+          if [ -z "$CHANGELOG_PATH" ]; then
+            echo "::error::No CHANGELOG.md file was changed in commit $COMMIT_SHA"
+            exit 1
+          fi
+          
+          # Count number of changed CHANGELOG files
+          CHANGELOG_COUNT=$(echo "$CHANGELOG_PATH" | wc -l)
+          if [ "$CHANGELOG_COUNT" -gt 1 ]; then
+            echo "::error::Multiple CHANGELOG.md files were changed. Only one package release is supported per commit."
+            exit 1
+          fi
+          
+          # Find package root (directory containing package.json)
+          PKG_DIR=$(dirname "$CHANGELOG_PATH")
+          while [ "$PKG_DIR" != "." ] && [ ! -f "$PKG_DIR/package.json" ]; do
+            PKG_DIR=$(dirname "$PKG_DIR")
+          done
+          
+          if [ ! -f "$PKG_DIR/package.json" ]; then
+            echo "::error::No package.json found in parent directories of $CHANGELOG_PATH"
+            exit 1
+          fi
+          
+          # Get package prefix from directory name
+          PKG_PREFIX=$(basename "$PKG_DIR")
+          
+          # Output values for later steps
+          echo "pkg_dir=$PKG_DIR" >> $GITHUB_OUTPUT
+          echo "pkg_prefix=$PKG_PREFIX" >> $GITHUB_OUTPUT
+
+      - name: Extract package details
+        id: package_info
+        run: |
+          PKG_DIR="${{ steps.package.outputs.pkg_dir }}"
+          
+          # Extract version from CHANGELOG.md
+          CHANGELOG_VERSION=$(grep -m1 -Eo '#+\s*\[Version *\[?v?([0-9]+\.[0-9]+\.[0-9]+)\]?' "$PKG_DIR/CHANGELOG.md" | grep -Eo '[0-9]+\.[0-9]+\.[0-9]+')
+          if [ -z "$CHANGELOG_VERSION" ]; then
+            echo "::error::Could not find version in CHANGELOG.md"
+            exit 1
+          fi
+          
+          # Extract version from package.json
+          PKG_VERSION=$(jq -r .version "$PKG_DIR/package.json")
+          if [ "$PKG_VERSION" != "$CHANGELOG_VERSION" ]; then
+            echo "::error::Version mismatch: package.json ($PKG_VERSION) vs CHANGELOG.md ($CHANGELOG_VERSION)"
+            exit 1
+          fi
+          
+          # Extract release notes
+          NOTES=$(awk '/^#+\s*\[Version /{i++}i==1{print}' "$PKG_DIR/CHANGELOG.md" | tail -n +2)
+          if [ -z "$NOTES" ]; then
+            echo "::error::No release notes found in CHANGELOG.md"
+            exit 1
+          fi
+          
+          # Output values for create release step
+          {
+            echo "version=$CHANGELOG_VERSION"
+            echo "notes<<EOF"
+            echo "$NOTES"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PKG_PREFIX="${{ steps.package.outputs.pkg_prefix }}"
+          VERSION="${{ steps.package_info.outputs.version }}"
+          TAG="$PKG_PREFIX/v$VERSION"
+          
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "Creating draft release for $TAG..."
+            gh release create "$TAG" \
+              --draft \
+              --title "$TAG" \
+              --notes "${{ steps.package_info.outputs.notes }}"
+          else
+            echo "Creating release for $TAG..."
+            git tag "$TAG"
+            git push origin "$TAG"
+            gh release create "$TAG" \
+              --title "$TAG" \
+              --notes "${{ steps.package_info.outputs.notes }}"
+          fi
