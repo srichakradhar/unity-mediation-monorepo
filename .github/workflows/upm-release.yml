@@ -6,6 +6,11 @@ on:
       - main
     paths:
       - '**/CHANGELOG.md'
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Commit SHA'
+        required: false
 
 jobs:
   release:
@@ -19,9 +24,14 @@ jobs:
       - name: Find changed package folder
         id: pkg
         run: |
+          COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
+          if [ -z "$COMMIT_SHA" ]; then
+            COMMIT_SHA="${{ github.sha }}"
+          fi
+          echo "[DEBUG] Using commit SHA: $COMMIT_SHA"
           echo "[DEBUG] Starting package folder detection..."
           PKG_DIR=""
-          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }})
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT_SHA)
           echo "[DEBUG] Changed files: $CHANGED_FILES"
           echo "$CHANGED_FILES" | while read FILE; do
             BASENAME=$(basename "$FILE" | tr '[:upper:]' '[:lower:]')
