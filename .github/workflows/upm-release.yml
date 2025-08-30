@@ -20,12 +20,14 @@ jobs:
         id: pkg
         run: |
           # Only consider directories containing a package.json file
-          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | grep 'CHANGELOG.md')
-          for FILE in $CHANGED_FILES; do
-            DIR=$(dirname "$FILE")
-            if [ -f "$DIR/package.json" ]; then
-              PKG_DIR="$DIR"
-              break
+          PKG_DIR=""
+          git diff-tree --no-commit-id --name-only -r ${{ github.sha }} | while read FILE; do
+            if [[ $(basename "$FILE" | tr '[:upper:]' '[:lower:]') == "changelog.md" ]]; then
+              DIR=$(dirname "$FILE")
+              if [ -f "$DIR/package.json" ]; then
+                PKG_DIR="$DIR"
+                break
+              fi
             fi
           done
           if [ -z "$PKG_DIR" ]; then
