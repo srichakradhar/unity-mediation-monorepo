@@ -10,7 +10,8 @@ on:
     inputs:
       commit_sha:
         description: 'Commit SHA'
-        required: false
+        required: true
+        type: string
 
 jobs:
   release:
@@ -29,13 +30,11 @@ jobs:
             COMMIT_SHA="${{ github.sha }}"
           fi
           echo "[DEBUG] Using commit SHA: $COMMIT_SHA"
-          echo "[DEBUG] Starting package folder detection..."
           PKG_DIR=""
-          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r $COMMIT_SHA)
+          CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA")
           echo "[DEBUG] Changed files: $CHANGED_FILES"
           echo "$CHANGED_FILES" | while read FILE; do
             BASENAME=$(basename "$FILE" | tr '[:upper:]' '[:lower:]')
-            echo "[DEBUG] Checking file: $FILE (basename: $BASENAME)"
             if [[ "$BASENAME" == "changelog.md" ]]; then
               DIR=$(dirname "$FILE")
               echo "[DEBUG] Found CHANGELOG.md in $DIR"
