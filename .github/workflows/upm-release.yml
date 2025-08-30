@@ -47,9 +47,13 @@ jobs:
             git log -n 5 --oneline
             exit 1
           fi
-          echo "[DEBUG] Changed files: $CHANGED_FILES"
-          echo "$CHANGED_FILES" | while read FILE; do
+          echo "[DEBUG] Changed files:"
+          echo "$CHANGED_FILES"
+          
+          # Process files without using a pipe to avoid subshell
+          for FILE in $(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA"); do
             BASENAME=$(basename "$FILE" | tr '[:upper:]' '[:lower:]')
+            echo "[DEBUG] Checking file: $FILE (basename: $BASENAME)"
             if [[ "$BASENAME" == "changelog.md" ]]; then
               DIR=$(dirname "$FILE")
               echo "[DEBUG] Found CHANGELOG.md in $DIR"
