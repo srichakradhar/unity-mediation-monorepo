@@ -16,7 +16,7 @@ on:
         description: 'Create draft release (dry run)'
         required: false
         type: boolean
-        default: false
+        default: true
 
 jobs:
   release:
@@ -29,10 +29,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Find changed package
+      - name: Find updated package with changelog
         id: package
         run: |
-          # Use provided commit SHA or latest commit
+          # e.g. PKG_DIR Line/packages/com.google.ads.mobile.mediation.line/CHANGELOG.md -> Line/packages/com.google.ads.mobile.mediation.line
+          # PKG_PREFIX Line/packages/com.google.ads.mobile.mediation.line -> Line
           COMMIT_SHA="${{ github.event.inputs.commit_sha }}"
           if [ -z "$COMMIT_SHA" ]; then
             COMMIT_SHA="${{ github.sha }}"
@@ -64,14 +65,14 @@ jobs:
             exit 1
           fi
           
-          # Get package prefix from directory name
-          PKG_PREFIX=$(basename "$PKG_DIR")
+          # Get package prefix from the root-level directory name
+          PKG_PREFIX=$(echo "$PKG_DIR" | cut -d'/' -f1)
           
           # Output values for later steps
           echo "pkg_dir=$PKG_DIR" >> $GITHUB_OUTPUT
           echo "pkg_prefix=$PKG_PREFIX" >> $GITHUB_OUTPUT
 
-      - name: Extract package details
+      - name: Extract package version and release notes
         id: package_info
         run: |
           PKG_DIR="${{ steps.package.outputs.pkg_dir }}"
@@ -105,7 +106,7 @@ jobs:
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
+      - name: Draft or publish a GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
