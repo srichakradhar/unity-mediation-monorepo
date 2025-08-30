@@ -76,6 +76,8 @@ jobs:
       - name: Extract version from CHANGELOG.md
         id: version
         run: |
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
           echo "[DEBUG] Extracting version from $PKG_DIR/CHANGELOG.md..."
           VERSION=$(grep -m1 -Eo '#*\s*\[Version *\[?v?([0-9]+\.[0-9]+\.[0-9]+)\]?' "$PKG_DIR/CHANGELOG.md" | grep -Eo '([0-9]+\.[0-9]+\.[0-9]+)')
           echo "[DEBUG] Extracted version: $VERSION"
@@ -83,6 +85,8 @@ jobs:
 
       - name: Verify package.json version
         run: |
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
           echo "[DEBUG] Verifying package.json version in $PKG_DIR/package.json..."
           PKG_JSON="$PKG_DIR/package.json"
           PKG_VERSION=$(jq -r .version "$PKG_JSON")
@@ -97,6 +101,8 @@ jobs:
       - name: Extract release notes
         id: notes
         run: |
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
           echo "[DEBUG] Extracting release notes from $PKG_DIR/CHANGELOG.md..."
           NOTES=$(awk '/^#### \[Version /{i++}i==1{print}' "$PKG_DIR/CHANGELOG.md" | tail -n +2)
           echo "[DEBUG] Extracted release notes:"
@@ -110,6 +116,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "[DEBUG] Creating release tag and GitHub release..."
+          PKG_DIR="${{ steps.pkg.outputs.pkg_dir }}"
+          echo "[DEBUG] Package directory: $PKG_DIR"
           TAG="${PKG_DIR}/v${{ steps.version.outputs.version }}"
           echo "[DEBUG] Tag to be created: $TAG"
           git tag "$TAG"
