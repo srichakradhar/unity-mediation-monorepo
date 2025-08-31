@@ -84,6 +84,7 @@ jobs:
 
       - name: Extract package version and release notes
         id: package_info
+        if: steps.package.outputs.pkg_dir != ''
         run: |
           PKG_DIR="${{ steps.package.outputs.pkg_dir }}"
           
@@ -118,6 +119,7 @@ jobs:
           } >> $GITHUB_OUTPUT
 
       - name: Draft or publish a GitHub Release
+        if: steps.package.outputs.pkg_dir != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
