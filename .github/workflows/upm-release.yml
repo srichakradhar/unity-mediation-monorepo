@@ -51,7 +51,7 @@ jobs:
           CHANGELOG_PATH=""
           while IFS= read -r path; do
             # Check if the latest version in this CHANGELOG is marked as "in progress"
-            if ! grep -m1 -A1 "^#+\s*Version" "$path" | grep -qi "in progress"; then
+            if ! grep -i -m1 -A1 -Eo "^#+\s*\[?version.*" "$path" | grep -qi "in progress"; then
               CHANGELOG_PATH="$path"
               break
             else
