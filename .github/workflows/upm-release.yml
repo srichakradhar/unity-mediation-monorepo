@@ -115,7 +115,7 @@ jobs:
           {
             echo "version=$CHANGELOG_VERSION"
             echo "notes<<EOF"
-            echo "$NOTES"
+            printf '%s\n' "$NOTES"
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
