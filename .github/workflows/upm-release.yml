@@ -25,6 +25,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
+        id: checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -39,7 +40,7 @@ jobs:
             COMMIT_SHA="${{ github.sha }}"
           fi
 
-          # Find all changed CHANGELOG.md files
+          # Find all changed CHANGELOG.md files.
           CHANGELOGS=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -i "changelog\.md$" || true)
 
           if [ -z "$CHANGELOGS" ]; then
@@ -47,20 +48,20 @@ jobs:
             exit 0
           fi
 
-          # Filter for CHANGELOG.md files that are in the same directory as a package.json
+          # Filter for CHANGELOG.md files that are in the same directory as a package.json.
           PACKAGE_CHANGELOGS=()
           while IFS= read -r path; do
             PKG_DIR=$(dirname "$path")
             if [ -f "$PKG_DIR/package.json" ]; then
-              # Check if the latest version in this CHANGELOG is marked as "in progress"
+              # Check if the latest version in this CHANGELOG is marked as "in progress".
               if ! grep -i -m1 -A1 -Eo "^#+\s*\[?version.*" "$path" | grep -qi "(in progress)"; then
                 PACKAGE_CHANGELOGS+=("$path")
-                echo "[DEBUG] Found release-ready changelog with package.json: $path"
+                echo "[DEBUG] Found release-ready changelog with package.json: $path."
               else
-                echo "[DEBUG] Skipping $path - version marked as 'In progress'"
+                echo "[DEBUG] Skipping $path - version marked as 'In progress'."
               fi
             else
-              echo "[DEBUG] Skipping $path - no package.json found in the same directory"
+              echo "[DEBUG] Skipping $path - no package.json found in the same directory."
             fi
           done <<< "$CHANGELOGS"
 
@@ -76,10 +77,10 @@ jobs:
           CHANGELOG_PATH="${PACKAGE_CHANGELOGS[0]}"
           PKG_DIR=$(dirname "$CHANGELOG_PATH")
 
-          # Get package prefix from the root-level directory name
+          # Get package prefix from the root-level directory name.
           PKG_PREFIX=$(echo "$PKG_DIR" | cut -d'/' -f1)
 
-          # Output values for later steps
+          # Output values for later steps.
           echo "pkg_dir=$PKG_DIR" >> $GITHUB_OUTPUT
           echo "pkg_prefix=$PKG_PREFIX" >> $GITHUB_OUTPUT
 
@@ -89,37 +90,33 @@ jobs:
         run: |
           PKG_DIR="${{ steps.package.outputs.pkg_dir }}"
 
-          # Extract first version that's not marked as "in progress"
+          # Extract first version that's not marked as "in progress".
           CHANGELOG_VERSION=$(grep -i -m1 -Eo '^#+\s*\[Version *\[?v?([0-9]+\.[0-9]+\.[0-9]+)\]?' "$PKG_DIR/CHANGELOG.md" | grep -Eo '([0-9]+\.[0-9]+\.[0-9]+)')
 
           if [ -z "$CHANGELOG_VERSION" ]; then
-            echo "[ERROR] ::error::Could not find a releasable version in CHANGELOG.md"
+            echo "[ERROR] ::error::Could not find a releasable version in CHANGELOG.md."
             exit 1
           fi
 
-          # Extract version from package.json
+          # Extract version from package.json.
           PKG_VERSION=$(jq -r .version "$PKG_DIR/package.json")
           if [ "$PKG_VERSION" != "$CHANGELOG_VERSION" ]; then
-            echo "[ERROR] ::error::Version mismatch: package.json ($PKG_VERSION) vs CHANGELOG.md ($CHANGELOG_VERSION)"
+            echo "[ERROR] ::error::Version mismatch: package.json ($PKG_VERSION) vs CHANGELOG.md ($CHANGELOG_VERSION)."
             exit 1
           fi
 
-          # Extract release notes
+          # Extract release notes.
           NOTES=$(awk 'tolower($0) ~ /^#+[[:space:]]*\[version[[:space:]]*[0-9]+\.[0-9]+\.[0-9]+\]/{i++}i==1{print}' "$PKG_DIR/CHANGELOG.md" | tail -n +2)
           if [ -z "$NOTES" ]; then
-            echo "[ERROR] ::error::No release notes found in CHANGELOG.md"
+            echo "[ERROR] ::error::No release notes found in CHANGELOG.md."
             exit 1
           fi
 
-          # Output values for create release step
+          # Output values for `release` step.
+          echo "$NOTES" >> /tmp/release_notes.md
           {
             echo "version=$CHANGELOG_VERSION"
-            echo "notes<<EOF"
-            echo "$NOTES"
-            echo "EOF"
           } >> $GITHUB_OUTPUT
-
-          echo "$NOTES" >> /tmp/release_notes.md
 
       - name: Draft or publish a GitHub Release
         id: release
