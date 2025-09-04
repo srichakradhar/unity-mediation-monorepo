@@ -40,40 +40,41 @@ jobs:
           fi
 
           # Find all changed CHANGELOG.md files
-          CHANGELOG_PATHS=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -i "changelog\.md$" || true)
+          CHANGELOGS=$(git diff-tree --no-commit-id --name-only -r "$COMMIT_SHA" | grep -i "changelog\.md$" || true)
 
-          if [ -z "$CHANGELOG_PATHS" ]; then
-            echo "[ERROR] ::error::No CHANGELOG.md file was changed in commit $COMMIT_SHA"
-            exit 1
-          fi
-
-          # Find first CHANGELOG.md that's ready for release (not in progress)
-          CHANGELOG_PATH=""
-          while IFS= read -r path; do
-            # Check if the latest version in this CHANGELOG is marked as "in progress"
-            if ! grep -i -m1 -A1 -Eo "^#+\s*\[?version.*" "$path" | grep -qi "in progress"; then
-              CHANGELOG_PATH="$path"
-              break
-            else
-              echo "[DEBUG] Skipping $path - version marked as 'In progress'"
-            fi
-          done <<< "$CHANGELOG_PATHS"
-
-          if [ -z "$CHANGELOG_PATH" ]; then
-            echo "[DEBUG] No CHANGELOG.md files ready for release found in commit $COMMIT_SHA"
+          if [ -z "$CHANGELOGS" ]; then
+            echo "[INFO] No CHANGELOG.md file was changed in commit $COMMIT_SHA"
             exit 0
           fi
 
-          # Find package root (directory containing package.json)
-          PKG_DIR=$(dirname "$CHANGELOG_PATH")
-          while [ "$PKG_DIR" != "." ] && [ ! -f "$PKG_DIR/package.json" ]; do
-            PKG_DIR=$(dirname "$PKG_DIR")
-          done
+          # Filter for CHANGELOG.md files that are in the same directory as a package.json
+          PACKAGE_CHANGELOGS=()
+          while IFS= read -r path; do
+            PKG_DIR=$(dirname "$path")
+            if [ -f "$PKG_DIR/package.json" ]; then
+              # Check if the latest version in this CHANGELOG is marked as "in progress"
+              if ! grep -i -m1 -A1 -Eo "^#+\s*\[?version.*" "$path" | grep -qi "(in progress)"; then
+                PACKAGE_CHANGELOGS+=("$path")
+                echo "[DEBUG] Found release-ready changelog with package.json: $path"
+              else
+                echo "[DEBUG] Skipping $path - version marked as 'In progress'"
+              fi
+            else
+              echo "[DEBUG] Skipping $path - no package.json found in the same directory"
+            fi
+          done <<< "$CHANGELOGS"
 
-          if [ ! -f "$PKG_DIR/package.json" ]; then
-            echo "[ERROR] ::error::No package.json found in parent directories of $CHANGELOG_PATH"
+          PKG_COUNT=${#PACKAGE_CHANGELOGS[@]}
+          if [ "$PKG_COUNT" -eq 0 ]; then
+            echo "[DEBUG] No package CHANGELOG.md files ready for release found in commit $COMMIT_SHA."
+            exit 0
+          elif [ "$PKG_COUNT" -gt 1 ]; then
+            echo "[ERROR] ::error::Found multiple package CHANGELOG.md files ready for release in commit $COMMIT_SHA. Please release one package at a time."
             exit 1
           fi
+
+          CHANGELOG_PATH="${PACKAGE_CHANGELOGS[0]}"
+          PKG_DIR=$(dirname "$CHANGELOG_PATH")
 
           # Get package prefix from the root-level directory name
           PKG_PREFIX=$(echo "$PKG_DIR" | cut -d'/' -f1)
