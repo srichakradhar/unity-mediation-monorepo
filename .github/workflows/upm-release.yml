@@ -119,7 +119,10 @@ jobs:
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
+          echo "$NOTES" >> /tmp/release_notes.md
+
       - name: Draft or publish a GitHub Release
+        id: release
         if: steps.package.outputs.pkg_dir != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -127,19 +130,18 @@ jobs:
           PKG_PREFIX="${{ steps.package.outputs.pkg_prefix }}"
           VERSION="${{ steps.package_info.outputs.version }}"
           TAG="$PKG_PREFIX/v$VERSION"
-          echo "${{ steps.package_info.outputs.notes }}" > release_notes.md
 
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
             echo "[DEBUG] Creating draft release for $TAG..."
             gh release create "$TAG" \
               --draft \
               --title "$TAG" \
-              --notes-file release_notes.md
+              --notes-file /tmp/release_notes.md
           else
             echo "[DEBUG] Creating release for $TAG..."
             git tag "$TAG"
             git push origin "$TAG"
             gh release create "$TAG" \
               --title "$PKG_PREFIX Unity Mediation Plugin v$VERSION" \
-              --notes-file release_notes.md
+              --notes-file /tmp/release_notes.md
           fi
