@@ -115,7 +115,7 @@ jobs:
           {
             echo "version=$CHANGELOG_VERSION"
             echo "notes<<EOF"
-            printf '%s\n' "$NOTES"
+            echo "$NOTES"
             echo "EOF"
           } >> $GITHUB_OUTPUT
 
@@ -127,18 +127,19 @@ jobs:
           PKG_PREFIX="${{ steps.package.outputs.pkg_prefix }}"
           VERSION="${{ steps.package_info.outputs.version }}"
           TAG="$PKG_PREFIX/v$VERSION"
+          echo "${{ steps.package_info.outputs.notes }}" > release_notes.md
 
           if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
             echo "[DEBUG] Creating draft release for $TAG..."
             gh release create "$TAG" \
               --draft \
               --title "$TAG" \
-              --notes "${{ steps.package_info.outputs.notes }}"
+              --notes-file release_notes.md
           else
             echo "[DEBUG] Creating release for $TAG..."
             git tag "$TAG"
             git push origin "$TAG"
             gh release create "$TAG" \
               --title "$PKG_PREFIX Unity Mediation Plugin v$VERSION" \
-              --notes "${{ steps.package_info.outputs.notes }}"
+              --notes-file release_notes.md
           fi
